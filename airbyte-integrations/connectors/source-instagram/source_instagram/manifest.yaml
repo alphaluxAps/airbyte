@@ -22,7 +22,7 @@ definitions:
           http_method: GET
           request_parameters:
             fields: >-
-              caption,comments_count,id,ig_id,is_comment_enabled,like_count,media_type,media_product_type,media_url,owner,permalink,shortcode,thumbnail_url,timestamp,username,children
+              caption,comments_count,id,ig_id,is_comment_enabled,like_count,media_type,media_product_type,media_url,owner,permalink,shortcode,thumbnail_url,timestamp,username,children,comments{username,user,text,id,like_count,timestamp}
           error_handler:
             type: CompositeErrorHandler
             error_handlers:
@@ -64,7 +64,25 @@ definitions:
               partition_field: account
               stream:
                 $ref: "#/definitions/streams/Api"
+      incremental_sync:
+        type: DatetimeBasedCursor
+        cursor_field: "timestamp" # Matches transformed field name
+        datetime_format: "%Y-%m-%dT%H:%M:%S%z" # Format NO ms
+        lookback_window: "P{{ config.get('media_lookback_days', 14) }}D"
+        start_datetime: # Minimal start time based on config
+           type: MinMaxDatetime
+           datetime: "{{ config.get('start_date', '1970-01-01T00:00:00Z') }}"
+           datetime_format: "%Y-%m-%dT%H:%M:%S%z" # Format NO ms (Ensure config matches!)
+        # Use start_time_option for standard incremental state injection
+        start_time_option:
+          type: RequestOption
+          field_name: since # API parameter name
+          inject_into: request_parameter
       transformations:
+        - type: AddFields
+          fields:
+            - path: [timestamp]
+              value: '{{ format_datetime(record["timestamp"], "%Y-%m-%dT%H:%M:%S%z") }}' # Output ZULU format NO ms
         - type: AddFields
           fields:
             - type: AddedFieldDefinition
@@ -97,9 +115,12 @@ definitions:
               value: "{{ stream_partition.account.business_account_id }}"
               value_type: string
         - type: CustomTransformation
+          class_name: source_instagram.components.InstagramMediaCommentsTransformation
+        - type: CustomTransformation
           class_name: source_instagram.components.InstagramMediaChildrenTransformation
         - type: CustomTransformation
           class_name: source_instagram.components.InstagramClearUrlTransformation
+
       schema_loader:
         type: InlineSchemaLoader
         schema:
@@ -780,6 +801,37 @@ schemas:
               airbyte_type: timestamp_with_timezone
             username:
               description: The username of the owner of the child media item.
+              type:
+                - "null"
+                - string
+      comments:
+        type:
+          - "null"
+          - array
+        items:
+          type: object
+          properties:
+            id:
+              type:
+                - "null"
+                - string
+            like_count:
+              type:
+                - "null"
+                - number
+            text:
+              type:
+                - "null"
+                - string
+            username:
+              type:
+                - "null"
+                - string
+            user:
+              type:
+                - "null"
+                - string
+            timestamp:
               type:
                 - "null"
                 - string

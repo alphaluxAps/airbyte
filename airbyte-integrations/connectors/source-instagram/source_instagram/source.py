@@ -45,7 +45,7 @@ class SourceInstagram(YamlDeclarativeSource):
     def _validate_start_date(self, config):
         # If start_date is not found in config, set it to 2 years ago
         if not config.get("start_date"):
-            config["start_date"] = pendulum.now().subtract(years=2).in_timezone("UTC").format("YYYY-MM-DDTHH:mm:ss.SSS[Z]")
+            config["start_date"] = pendulum.now().subtract(years=2).in_timezone("UTC").format("YYYY-MM-DDTHH:mm:ss[Z]")
         else:
             if pendulum.parse(config["start_date"]) > pendulum.now():
                 raise ValueError("Please fix the start_date parameter in config, it cannot be in the future")

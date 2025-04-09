@@ -31,6 +31,12 @@
         "airbyte_secret": true,
         "type": "string"
       },
+      "media_lookback_days": {
+        "type": "integer",
+        "title": "Media Lookback Window (Days)",
+        "description": "Number of days of Media data to fetch from the current time for each sync, ensuring recent updates are captured. Affects the Media stream only.",
+        "default": 28
+      },
       "num_workers": {
         "type": "integer",
         "title": "Number of concurrent workers",

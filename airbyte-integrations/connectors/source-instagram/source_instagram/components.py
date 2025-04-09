@@ -81,6 +81,16 @@ class InstagramClearUrlTransformation(RecordTransformation):
 
         return record
 
+@dataclass
+class InstagramMediaCommentsTransformation(RecordTransformation):
+    def transform(self, record: MutableMapping[str, Any], config: Optional[Config] = None, **kwargs) -> MutableMapping[str, Any]:
+        # Safely extract the comments data
+        comments = record.get("comments", {})
+        data = comments.get("data", [])
+        record["comments"] = data
+        logging.debug("Transformed record: %s", record)
+        return record
+
 
 @dataclass
 class InstagramMediaChildrenTransformation(RecordTransformation):
@@ -135,7 +145,6 @@ class InstagramMediaChildrenTransformation(RecordTransformation):
                     formatted_str_with_colon = formatted_str[:-2] + ":" + formatted_str[-2:]
                     media_data["timestamp"] = formatted_str_with_colon
                 children_fetched.append(media_data)
-
             record["children"] = children_fetched
         return record
 
@@ -187,6 +196,7 @@ class InstagramInsightsTransformation(RecordTransformation):
             for insight in insights_data:
                 record[insight["name"]] = insight.get("values")[0]["value"]
         return record
+
 
 
 @dataclass
