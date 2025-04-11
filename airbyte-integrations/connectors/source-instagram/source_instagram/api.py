@@ -109,3 +109,37 @@ class InstagramAPI:
             )
 
         return instagram_business_accounts
+        
+    @backoff_policy
+    def get_insights(self, account_id: str, params: Mapping[str, Any]):
+        """
+        Get insights for a specific Instagram media.
+        
+        Args:
+            account_id: The media ID to get insights for
+            params: Additional parameters to pass to the API
+            
+        Returns:
+            The insights data cursor, or None if there was an error
+        """
+        try:
+            # Use the IGUser class to get insights
+            ig_account = IGUser(account_id)
+            return ig_account.get_insights(params=params)
+        except FacebookRequestError as exc:
+            # Handle expected errors
+            if exc.api_error_code() == 10 or (exc.api_error_code() == 100 and exc.api_error_subcode() == 33):
+                # Permissions error or insights not available - log and continue
+                logger.debug(f"Skipping insights for media {account_id}: {exc.api_error_message()}")
+                return None
+            elif exc.api_error_code() == 102:
+                # Session expired - refresh token needed
+                logger.error(f"Session expired: {exc.api_error_message()}")
+                raise
+            else:
+                # Unexpected error
+                logger.warning(f"Error getting insights for media {account_id}: {exc.api_error_code()}, {exc.api_error_message()}")
+                return None
+        except Exception as e:
+            logger.warning(f"Unexpected error getting insights for media {account_id}: {str(e)}")
+            return None

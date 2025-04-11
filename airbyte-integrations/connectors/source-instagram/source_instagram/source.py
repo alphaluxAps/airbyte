@@ -4,13 +4,16 @@
 from typing import Any, List, Mapping, Optional, Tuple
 
 import pendulum
+import logging
+
+logger = logging.getLogger("airbyte")
 
 from airbyte_cdk.models import ConfiguredAirbyteCatalog
 from airbyte_cdk.sources.declarative.yaml_declarative_source import YamlDeclarativeSource
 from airbyte_cdk.sources.source import TState
 from airbyte_cdk.sources.streams.core import Stream
 from source_instagram.api import InstagramAPI
-from source_instagram.streams import UserInsights
+from source_instagram.streams import UserInsights, MediaInsightsStream
 
 
 """
@@ -51,11 +54,56 @@ class SourceInstagram(YamlDeclarativeSource):
                 raise ValueError("Please fix the start_date parameter in config, it cannot be in the future")
 
     def streams(self, config: Mapping[str, Any]) -> List[Stream]:
-        streams = super().streams(config)
-        return streams + self.get_non_low_code_streams(config=config)
+        declarative_streams = super().streams(config)
+        
+        # Filter out the declarative MediaInsights stream
+        filtered_streams = [s for s in declarative_streams if s.name != "media_insights"]
+        
+        return filtered_streams + self.get_non_low_code_streams(config=config)
 
     def get_non_low_code_streams(self, config: Mapping[str, Any]) -> List[Stream]:
         api = InstagramAPI(access_token=config["access_token"])
         self._validate_start_date(config)
-        streams = [UserInsights(api=api, start_date=config["start_date"])]
+        
+        # Get lookback windows from config
+        user_insights_lookback_days = config.get('user_insights_lookback_days', 7)
+        media_lookback_days = config.get('media_lookback_days', 14)
+        
+        # Find the Media stream from the declarative streams
+        media_stream = None
+        for stream in super().streams(config):
+            if stream.name == "media":
+                media_stream = stream
+                break
+                
+        if not media_stream:
+            logger.error("Could not find Media stream in declarative streams")
+            # Create a fallback empty list of streams if we can't find the Media stream
+            return [UserInsights(api=api, start_date=config["start_date"], lookback_window=user_insights_lookback_days)]
+                
+        # Create the UserInsights stream
+        user_insights = UserInsights(
+            api=api, 
+            start_date=config["start_date"],
+            lookback_window=user_insights_lookback_days
+        )
+        
+        # Create the MediaInsights stream if we found a Media stream
+        streams = [user_insights]
+        
+        if media_stream:
+            try:
+                media_insights = MediaInsightsStream(
+                    api=api,
+                    start_date=config["start_date"],
+                    lookback_window=media_lookback_days
+                )
+                # Set the media stream explicitly to ensure proper connection
+                media_insights.set_media_stream(media_stream)
+                streams.append(media_insights)
+                logger.info("Successfully created MediaInsights stream with Media stream")
+            except Exception as e:
+                logger.error(f"Error creating MediaInsights stream: {e}")
+                # Only return UserInsights if there was an error creating MediaInsights
+        
         return streams

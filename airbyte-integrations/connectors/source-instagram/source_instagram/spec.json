@@ -37,6 +37,12 @@
         "description": "Number of days of Media data to fetch from the current time for each sync, ensuring recent updates are captured. Affects the Media stream only.",
         "default": 28
       },
+      "user_insights_lookback_days": {
+        "type": "integer",
+        "title": "user_insights Lookback Window (Days)",
+        "description": "Number of days of user_insights data to fetch from the current time for each sync, ensuring recent updates are captured. Affects the user_insights stream only.",
+        "default": 7
+      },
       "num_workers": {
         "type": "integer",
         "title": "Number of concurrent workers",

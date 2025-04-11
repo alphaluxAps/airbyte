@@ -34,6 +34,54 @@
     "online_followers": {
       "description": "The number of followers who are currently online.",
       "type": ["null", "object"]
+    },
+    "unfollows": {
+      "description": "unfollows",
+      "type": ["null", "integer"]
+    },
+    "accounts_engaged": {
+      "description": "accounts_engaged",
+      "type": ["null", "integer"]
+    },
+    "replies": {
+      "description": "replies",
+      "type": ["null", "integer"]
+    },
+    "website_clicks": {
+      "description": "website_clicks",
+      "type": ["null", "integer"]
+    },
+    "profile_views": {
+      "description": "profile_views",
+      "type": ["null", "integer"]
+    },
+    "profile_links_taps": {
+      "description": "profile_links_taps",
+      "type": ["null", "integer"]
+    },
+    "likes": {
+      "description": "likes",
+      "type": ["null", "integer"]
+    },
+    "comments": {
+      "description": "comments",
+      "type": ["null", "integer"]
+    },
+    "saves": {
+      "description": "saves",
+      "type": ["null", "integer"]
+    },
+    "shares": {
+      "description": "shares",
+      "type": ["null", "integer"]
+    },
+    "total_interactions": {
+      "description": "total_interactions",
+      "type": ["null", "integer"]
+    },
+    "engagement_breakdown": {
+      "description": "engagement_breakdown",
+      "type": ["null", "object"]
     }
   }
 }
