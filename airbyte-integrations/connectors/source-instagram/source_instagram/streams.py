@@ -558,12 +558,16 @@ class MediaInsightsStream(DatetimeTransformerMixin, InstagramIncrementalStream):
             # Return empty list rather than raising an exception
             return []
         
-        # Calculate lookback window
-        lookback_days = self._lookback_window
-        cutoff_date = pendulum.now() - pendulum.duration(days=lookback_days)
-        
-        # Log useful information
-        logging.info(f"MediaInsights: Using lookback of {lookback_days} days (cutoff: {cutoff_date.to_iso8601_string()})")
+        # Determine the cutoff date based on sync mode and state
+        if sync_mode == SyncMode.full_refresh or not stream_state:
+            # For full refresh or first sync (no state), use start_date
+            cutoff_date = self._start_date
+            logging.info(f"MediaInsights: Full refresh or initial sync - using start_date as cutoff: {cutoff_date.to_iso8601_string()}")
+        else:
+            # For incremental sync with state, use lookback window
+            lookback_days = self._lookback_window
+            cutoff_date = pendulum.now() - pendulum.duration(days=lookback_days)
+            logging.info(f"MediaInsights: Incremental sync - using lookback of {lookback_days} days (cutoff: {cutoff_date.to_iso8601_string()})")
         
         # Initialize counters for tracking
         media_processed = 0
@@ -610,12 +614,12 @@ class MediaInsightsStream(DatetimeTransformerMixin, InstagramIncrementalStream):
                         if timestamp >= cutoff_date:
                             filtered_records.append(record)
                         else:
-                            logging.debug(f"MediaInsights: Filtered out media record with timestamp {timestamp_str}")
+                            logging.debug(f"MediaInsights: Filtered out media record with timestamp {timestamp_str} (older than cutoff {cutoff_date})")
                     except Exception as e:
                         logging.warning(f"MediaInsights: Error parsing timestamp: {e}")
                 
                 media_filtered += len(filtered_records)
-                logging.info(f"MediaInsights: Filtered to {len(filtered_records)} media records within lookback window")
+                logging.info(f"MediaInsights: Filtered to {len(filtered_records)} media records from cutoff date {cutoff_date.to_iso8601_string()}")
                 
                 # Process filtered media records
                 for media_record in filtered_records:
@@ -685,7 +689,10 @@ class MediaInsightsStream(DatetimeTransformerMixin, InstagramIncrementalStream):
         
         finally:
             # Always log summary stats regardless of errors
-            logging.info(f"MediaInsights summary: Processed {media_processed} media records, filtered to {media_filtered}, returned {insights_returned} insights")
+            if sync_mode == SyncMode.full_refresh or not stream_state:
+                logging.info(f"MediaInsights summary (FULL REFRESH): Processed {media_processed} media records, filtered to {media_filtered} (since {cutoff_date.to_iso8601_string()}), returned {insights_returned} insights")
+            else:
+                logging.info(f"MediaInsights summary (INCREMENTAL): Processed {media_processed} media records, filtered to {media_filtered} (since {cutoff_date.to_iso8601_string()}), returned {insights_returned} insights")
         
     def get_updated_state(self, current_stream_state: MutableMapping[str, Any], latest_record: Mapping[str, Any]) -> Mapping[str, Any]:
         """
